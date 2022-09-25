@@ -1,4 +1,4 @@
-import {Dimensions, StyleSheet, Text} from 'react-native';
+import {Dimensions, StyleSheet, Text, TouchableOpacity} from 'react-native';
 import React from 'react';
 import {ItemInterface} from '../App';
 import Animated, {
@@ -30,6 +30,9 @@ type ContextInterface = {
   translateX: number;
 };
 
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
+
 const ListItem: React.FC<ListItemProps> = ({
   data,
   onSwipeComplete,
@@ -39,6 +42,18 @@ const ListItem: React.FC<ListItemProps> = ({
   const itemHeight = useSharedValue(LIST_ITEM_HEIGHT);
   const rootMarginVertical = useSharedValue(10);
   const containerOpacity = useSharedValue(1);
+
+  const fullSwipeFunction = () => {
+    'worklet';
+    translateX.value = withTiming(-SCREEN_WIDTH);
+    itemHeight.value = withTiming(0);
+    rootMarginVertical.value = withTiming(0);
+    containerOpacity.value = withTiming(0, undefined, isFinished => {
+      if (isFinished && onSwipeComplete) {
+        runOnJS(onSwipeComplete)(data);
+      }
+    });
+  };
 
   const gestureEventHandler = useAnimatedGestureHandler<
     PanGestureHandlerGestureEvent,
@@ -53,19 +68,10 @@ const ListItem: React.FC<ListItemProps> = ({
       }
     },
     onEnd: () => {
-      if (translateX.value < 0) {
-        if (TOGGLE_DISMISS_VALUE < translateX.value) {
-          translateX.value = withTiming(0);
-        } else {
-          translateX.value = withTiming(-SCREEN_WIDTH);
-          itemHeight.value = withTiming(0);
-          rootMarginVertical.value = withTiming(0);
-          containerOpacity.value = withTiming(0, undefined, isFinished => {
-            if (isFinished && onSwipeComplete) {
-              runOnJS(onSwipeComplete)(data);
-            }
-          });
-        }
+      if (TOGGLE_DISMISS_VALUE < translateX.value) {
+        translateX.value = withTiming(TOGGLE_DISMISS_VALUE + 50);
+      } else {
+        fullSwipeFunction();
       }
     },
   });
@@ -77,7 +83,9 @@ const ListItem: React.FC<ListItemProps> = ({
   });
 
   const rIconContainerStyle = useAnimatedStyle(() => {
-    const opacity = withTiming(translateX.value < TOGGLE_DISMISS_VALUE ? 1 : 0);
+    const opacity = withTiming(
+      translateX.value < TOGGLE_DISMISS_VALUE + 55 ? 1 : 0,
+    );
     return {
       opacity,
     };
@@ -93,9 +101,11 @@ const ListItem: React.FC<ListItemProps> = ({
 
   return (
     <Animated.View style={[styles.root, rRootStyle]}>
-      <Animated.View style={[styles.iconContainer, rIconContainerStyle]}>
+      <AnimatedTouchableOpacity
+        onPress={fullSwipeFunction}
+        style={[styles.iconContainer, rIconContainerStyle]}>
         <FontAwesome5 name="trash-alt" size={24} color="red" />
-      </Animated.View>
+      </AnimatedTouchableOpacity>
       <PanGestureHandler
         simultaneousHandlers={simultaneousHandlers}
         onGestureEvent={gestureEventHandler}>
