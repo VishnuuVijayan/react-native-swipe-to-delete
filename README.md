@@ -1,4 +1,4 @@
-# React Native Bottom Sheet
+# React Native Swipe to Delete
 
 This project uses React Native Reanimated 2 and React Native Gesture Handler to create swipe to delete Functionaity.
 
